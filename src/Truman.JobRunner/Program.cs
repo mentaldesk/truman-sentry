@@ -8,6 +8,7 @@ using Microsoft.SemanticKernel;
 using Polly;
 using Truman.Data;
 using Truman.JobRunner;
+using Sentry;
 using DotNetEnv;
 using DotNetEnv.Configuration;
 
@@ -27,6 +28,14 @@ try
         .ConfigureLogging((context, logging) =>
         {
             logging.ClearProviders();
+            logging.AddSentry(options =>
+            {
+                options.Dsn = context.Configuration["Sentry:Dsn"];
+                options.TracesSampleRate = 1.0;
+                options.CaptureFailedRequests = true;
+                options.SendDefaultPii = true;
+                options.StackTraceMode = StackTraceMode.Enhanced;
+            });
             logging.AddConsole();
             logging.SetMinimumLevel(LogLevel.Information);
         })
@@ -134,7 +143,7 @@ try
 }
 catch (Exception e)
 {
-    Console.Error.WriteLine(e);
+    SentrySdk.CaptureException(e);
     // This is required to force an error code to be returned to k8s if an exception occurs... Otherwise, the CronJob
     // in k8s doesn't know the job has failed.
     Environment.Exit(1);
