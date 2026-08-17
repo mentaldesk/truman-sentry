@@ -1,0 +1,21 @@
+bin/
+obj/
+/packages/
+riderModule.iml
+/_ReSharper.Caches/
+.idea
+*.user
+.DS_Store
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Kind local data and config
+.kind-data/
+kind-config.yaml
+
+# EF Core migration bundles
+Truman.Api/efbundle

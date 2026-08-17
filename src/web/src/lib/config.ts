@@ -1,0 +1,8 @@
+const browserOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+
+// Prefer runtime config when explicitly provided, otherwise fall back to same-origin for the merged app.
+export const API_URL = (typeof window !== 'undefined' && (window as any).__API_URL__) || import.meta.env.VITE_API_URL || browserOrigin;
+export const SOCIAL_AUTH_ENABLED: boolean = (typeof window !== 'undefined' && (window as any).__SOCIAL_AUTH_ENABLED__ !== undefined)
+    ? (window as any).__SOCIAL_AUTH_ENABLED__
+    : true;
+

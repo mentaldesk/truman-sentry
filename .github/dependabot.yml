@@ -1,0 +1,151 @@
+# Dependabot version updates.
+#
+# Security updates (the PRs raised in response to an advisory) are enabled in
+# Settings -> Advanced Security and do not need this file. What this file adds
+# is routine *version* updates, plus coverage for the NuGet, Actions and Docker
+# ecosystems so dependencies do not drift between advisories.
+#
+# Every ecosystem gets at most two grouped PRs a week: one for minor+patch, one
+# for majors. Majors stay in their own PR because they are the ones that break
+# things, but they are still grouped -- leaving majors ungrouped produced 19
+# separate PRs on the first run, which is not reviewable.
+#
+# Dependencies whose version is really a property of the target framework are
+# ignored at the major level; see the nuget and docker blocks below.
+version: 2
+updates:
+  # SvelteKit front end. Note that everything in src/web/package.json is a
+  # devDependency: the deployed artifact is static files emitted by
+  # adapter-static, so these bumps affect CI and local builds only.
+  - package-ecosystem: npm
+    directory: /src/web
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      web-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+      web-major:
+        patterns:
+          - "*"
+        update-types:
+          - major
+    ignore:
+      # svelte-check 4.7.x declares `typescript: ^5.0.0 || ^6.0.0`, so a bump to
+      # TypeScript 7 makes the tree unresolvable and `npm ci` fails in the
+      # Dockerfile. Drop this entry once svelte-check widens that peer range.
+      - dependency-name: typescript
+        versions:
+          - 7.x
+
+  # .NET projects. truman.sln at the repo root drives discovery; the versions
+  # themselves live in the central src/Directory.Packages.props and
+  # test/Directory.Packages.props.
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      dotnet-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+      dotnet-major:
+        patterns:
+          - "*"
+        update-types:
+          - major
+    ignore:
+      # These ship in lockstep with the framework, so a 9.x -> 10.x bump is a
+      # TFM migration wearing a dependency bump's clothes. Every project targets
+      # net9.0; move the TFM first, then drop the matching entry here. Minor and
+      # patch updates within 9.x are unaffected, which is how servicing fixes
+      # for the supported framework actually arrive.
+      - dependency-name: "Microsoft.Extensions.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.AspNetCore.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.EntityFrameworkCore*"
+        update-types: ["version-update:semver-major"]
+      # Not a Microsoft package, but its major tracks EF Core's -- and both
+      # Directory.Packages.props files deliberately hold EF in lockstep.
+      - dependency-name: "Npgsql.EntityFrameworkCore.PostgreSQL"
+        update-types: ["version-update:semver-major"]
+
+  # Actions used by the three workflows. An action major can change the runner
+  # semantics under a job that holds GHCR secrets, so they land in
+  # their own PR -- but as one PR, not five.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+      actions-major:
+        patterns:
+          - "*"
+        update-types:
+          - major
+
+  # Base images for the three Dockerfiles. group-by: dependency-name collapses
+  # an image that appears in more than one Dockerfile into a single PR -- e.g.
+  # node, currently pinned to 20-alpine in web and 22-alpine in the other two,
+  # which should move as one decision rather than one PR per file.
+  - package-ecosystem: docker
+    directories:
+      - /src/Truman.Api
+      - /src/Truman.JobRunner
+      - /src/web
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      docker-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+        group-by: dependency-name
+      docker-major:
+        patterns:
+          - "*"
+        update-types:
+          - major
+        group-by: dependency-name
+    ignore:
+      # Same reasoning as the nuget block: the dotnet base image tag tracks the
+      # TFM. Bumping it to 10.0 while the projects target net9.0 breaks the
+      # build. 9.0 tag updates still flow, which is where CVE fixes for these
+      # images land.
+      - dependency-name: "mcr.microsoft.com/dotnet/*"
+        update-types: ["version-update:semver-major"]
