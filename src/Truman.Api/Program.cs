@@ -31,6 +31,7 @@ builder.WebHost.UseSentry(options =>
     options.SendDefaultPii = true;
     options.StackTraceMode = StackTraceMode.Enhanced;
 });
+builder.Services.AddSentryTunneling();
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -130,9 +131,13 @@ app.MapProfileEndpoints();
 app.MapTagPreferenceEndpoints();
 app.MapFeedEndpoints();
 app.MapPresenterEndpoints();
+app.UseSentryTunneling();
 
 if (hasWebBuild)
 {
+    // The Sentry tunnel is not listed here. UseSentryTunneling() branches the pipeline at
+    // /tunnel with terminal middleware, so those requests are handled and completed before
+    // the endpoint fallback is ever reached.
     app.MapFallback(async context =>
     {
         if (context.Request.Path.StartsWithSegments("/api") ||
