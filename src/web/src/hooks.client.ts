@@ -1,4 +1,4 @@
-import { SENTRY_DSN, ENVIRONMENT } from '$lib/config';
+import { API_URL, SENTRY_DSN, ENVIRONMENT } from '$lib/config';
 import * as Sentry from '@sentry/svelte';
 import type { HandleClientError } from '@sveltejs/kit';
 
@@ -8,7 +8,15 @@ import type { HandleClientError } from '@sveltejs/kit';
 Sentry.init({
   dsn: SENTRY_DSN,
   environment: ENVIRONMENT,
+
+  // Route events through our own API rather than sentry.io directly, so ad blockers and
+  // strict Content Security Policies do not silently drop them.
+  tunnel: API_URL + '/tunnel',
+
   tracesSampleRate: 1.0,
+
+  // Only propagate trace headers to our own API.
+  tracePropagationTargets: ['localhost', '127.0.0.1', API_URL],
 
   integrations: [Sentry.browserTracingIntegration()],
 });
