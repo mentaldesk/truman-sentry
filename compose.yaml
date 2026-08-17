@@ -12,6 +12,7 @@ services:
       - .env
     environment:
       POSTGRES_HOST: postgres
+      Sentry__Dsn: ${Sentry__Dsn:-}
       Frontend__BaseUrl: ${Frontend__BaseUrl:-http://localhost:5001}
       PORT: 5001
     ports:
