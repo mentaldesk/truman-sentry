@@ -63,4 +63,5 @@ services:
       Authentication__Jwt__Audience: ${Authentication__Jwt__Audience:-truman-web}
       Email__Brevo__ApiKey: ${Email__Brevo__ApiKey}
       Email__Brevo__MagicLinkTemplateId: ${Email__Brevo__MagicLinkTemplateId:-1}
+      Sentry__Dsn: ${Sentry__Dsn:-}
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
