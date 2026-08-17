@@ -1,4 +1,4 @@
-import { SENTRY_DSN, ENVIRONMENT } from '$lib/config';
+import { API_URL, SENTRY_DSN, ENVIRONMENT } from '$lib/config';
 import * as Sentry from '@sentry/sveltekit';
 
 // This file runs in the browser before anything else in the app, which makes it the right
@@ -7,7 +7,15 @@ import * as Sentry from '@sentry/sveltekit';
 Sentry.init({
   dsn: SENTRY_DSN,
   environment: ENVIRONMENT,
+
+  // Route events through our own API rather than sentry.io directly, so ad blockers and
+  // strict Content Security Policies do not silently drop them.
+  tunnel: API_URL + '/tunnel',
+
   tracesSampleRate: 1.0,
+
+  // Only propagate trace headers to our own API.
+  tracePropagationTargets: ['localhost', '127.0.0.1', API_URL],
 });
 
 // SvelteKit catches errors thrown in load functions and during component rendering and routes
