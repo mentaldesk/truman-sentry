@@ -22,6 +22,16 @@ builder.Configuration.AddDotNetEnv(".env", LoadOptions.TraversePath());
 var connectionString = builder.Configuration.GetPostgresConnectionString();
 builder.Services.AddDbContext<TrumanDbContext>(options => options.UseNpgsql(connectionString));
 
+builder.WebHost.UseSentry(options =>
+{
+    options.Dsn = builder.Configuration["Sentry:Dsn"];
+    options.TracesSampleRate = 1.0;
+    options.CaptureBlockingCalls = true;
+    options.CaptureFailedRequests = true;
+    options.SendDefaultPii = true;
+    options.StackTraceMode = StackTraceMode.Enhanced;
+});
+
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
