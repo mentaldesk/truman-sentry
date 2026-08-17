@@ -111,11 +111,18 @@ if (hasWebBuild)
         FileProvider = webBuildFileProvider
     });
 
-    app.MapGet("/config.js", (HttpContext context, IConfiguration configuration) =>
+    app.MapGet("/config.js", (
+        HttpContext context,
+        IConfiguration configuration,
+        IOptions<SentryAspNetCoreOptions> sentryOptions) =>
     {
         var apiUrl = context.Request.GetBaseUrl();
         var sentryDsn = configuration["Sentry:Dsn"] ?? string.Empty;
-        var environment = app.Environment.EnvironmentName;
+        // Hand the browser the environment the Sentry SDK actually resolved, not the raw
+        // ASP.NET Core name. The two differ in casing ("Staging" vs "staging"), and Sentry
+        // treats those as separate environments — which would split browser events away from
+        // the API events they belong with.
+        var environment = sentryOptions.Value.Environment ?? app.Environment.EnvironmentName;
         var socialEnabled = configuration.GetValue("Authentication:Social:Enabled", defaultValue: true);
 
         var js = string.Join("\n",
