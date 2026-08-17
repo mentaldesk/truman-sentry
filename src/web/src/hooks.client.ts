@@ -1,4 +1,4 @@
-import { API_URL, SENTRY_DSN, ENVIRONMENT } from '$lib/config';
+import { API_URL, SENTRY_DSN, ENVIRONMENT, SENTRY_TRACES_SAMPLE_RATE } from '$lib/config';
 import * as Sentry from '@sentry/sveltekit';
 
 // This file runs in the browser before anything else in the app, which makes it the right
@@ -12,7 +12,10 @@ Sentry.init({
   // strict Content Security Policies do not silently drop them.
   tunnel: API_URL + '/tunnel',
 
-  tracesSampleRate: 1.0,
+  // Supplied by the API via /config.js so the browser and the backend make the same sampling
+  // decision. The browser is the head of the trace, so its decision is the one that counts —
+  // a trace sampled out here is not recorded by the API either.
+  tracesSampleRate: SENTRY_TRACES_SAMPLE_RATE,
 
   // Only propagate trace headers to our own API.
   tracePropagationTargets: ['localhost', '127.0.0.1', API_URL],
