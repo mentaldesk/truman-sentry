@@ -8,6 +8,7 @@ using Microsoft.SemanticKernel;
 using Polly;
 using Truman.Data;
 using Truman.JobRunner;
+using Sentry;
 using DotNetEnv;
 using DotNetEnv.Configuration;
 
@@ -27,6 +28,36 @@ try
         .ConfigureLogging((context, logging) =>
         {
             logging.ClearProviders();
+            logging.AddSentry(options =>
+            {
+                options.Dsn = context.Configuration["Sentry:Dsn"];
+                // Sentry.AspNetCore bridges IWebHostEnvironment to the Sentry environment for us.
+                // Sentry.Extensions.Logging has no equivalent, so a generic-host app resolves it
+                // itself. Mirror the precedence Sentry.AspNetCore applies, so the API and the
+                // job runner always report the same environment:
+                //   1. SENTRY_ENVIRONMENT, used verbatim
+                //   2. otherwise DOTNET_ENVIRONMENT, via IHostEnvironment, lower-cased to Sentry's
+                //      convention for the three standard names and passed through for custom ones
+                // There is no third case: .NET already defaults EnvironmentName to Production.
+                var hostEnvironment = context.HostingEnvironment;
+                var sentryEnvironment = Environment.GetEnvironmentVariable("SENTRY_ENVIRONMENT");
+                if (string.IsNullOrWhiteSpace(sentryEnvironment))
+                {
+                    sentryEnvironment =
+                        hostEnvironment.IsProduction() ? "production" :
+                        hostEnvironment.IsStaging() ? "staging" :
+                        hostEnvironment.IsDevelopment() ? "development" :
+                        hostEnvironment.EnvironmentName;
+                }
+                options.Environment = sentryEnvironment;
+                // Deliberately 1.0, unlike the API. This is a scheduled batch job with bounded
+                // volume — a handful of runs a day, not a request per user — so full sampling
+                // costs almost nothing and a sampled-out run is one we cannot investigate.
+                options.TracesSampleRate = 1.0;
+                options.CaptureFailedRequests = true;
+                options.SendDefaultPii = true;
+                options.StackTraceMode = StackTraceMode.Enhanced;
+            });
             logging.AddConsole();
             logging.SetMinimumLevel(LogLevel.Information);
         })
@@ -134,7 +165,7 @@ try
 }
 catch (Exception e)
 {
-    Console.Error.WriteLine(e);
+    SentrySdk.CaptureException(e);
     // This is required to force an error code to be returned to k8s if an exception occurs... Otherwise, the CronJob
     // in k8s doesn't know the job has failed.
     Environment.Exit(1);

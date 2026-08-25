@@ -23,6 +23,8 @@
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="9.0.6" />
     <PackageVersion Include="Microsoft.SemanticKernel" Version="1.59.0" />
     <PackageVersion Include="Microsoft.SemanticKernel.Connectors.Google" Version="1.59.0-alpha" />
+    <PackageVersion Include="Sentry.AspNetCore" Version="6.4.1" />
+    <PackageVersion Include="Sentry.Extensions.Logging" Version="6.4.1" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
     <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerUI" Version="9.0.1" />
   </ItemGroup>
