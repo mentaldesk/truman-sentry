@@ -64,3 +64,31 @@ jobs:
             **/TestResults/*.log
             **/TestResults/coverage/*.xml
           if-no-files-found: ignore
+
+  # The frontend tests run in a real browser via Playwright, so they need a browser
+  # downloaded. Like build-test above, they use no secrets, which is what makes them
+  # safe to run against fork PRs.
+  web-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: src/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Test
+        run: npm test
