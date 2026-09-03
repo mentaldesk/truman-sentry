@@ -19,6 +19,10 @@ Sentry.init({
 
   // Only propagate trace headers to our own API.
   tracePropagationTargets: ['localhost', '127.0.0.1', API_URL],
+
+  // Browser-side structured logs, linked to the trace they happened inside — the same
+  // feature the API and job runner enable, so one trace carries logs from both ends.
+  enableLogs: true,
 });
 
 // SvelteKit catches errors thrown in load functions and during component rendering and routes
