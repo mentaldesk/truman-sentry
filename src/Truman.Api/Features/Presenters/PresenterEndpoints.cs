@@ -20,6 +20,9 @@ public static class PresenterEndpoints
                 .OrderBy(p => p.Label)
                 .Select(p => new PresenterOptionDto(p.Id, p.Label))
                 .ToListAsync();
+
+        // SCREENSHOT BUG - remove after capturing.
+        var defaultPresenter = options.First();
             return Results.Ok(options);
         });
 

@@ -110,6 +110,14 @@
 </script>
 
 <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+	<!-- SCREENSHOT BUG - remove after capturing. -->
+	<button
+		style="margin:1rem;padding:.5rem 1rem;border:1px solid currentColor;border-radius:.375rem"
+		on:click={() => { throw new Error('Deliberate test error from the Truman frontend'); }}
+	>
+		Break something
+	</button>
+
     <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-lg">
         <div>
             <h1 class="text-center text-4xl font-bold tracking-tight mb-2">TRUMAN.NEWS</h1>
