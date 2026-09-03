@@ -23,6 +23,22 @@ Sentry.init({
   // Browser-side structured logs, linked to the trace they happened inside — the same
   // feature the API and job runner enable, so one trace carries logs from both ends.
   enableLogs: true,
+
+  integrations: [
+    // Registering the integration is not enough on its own: both sample rates default
+    // to 0, so a replay integration with no rates set records nothing at all and gives
+    // no indication that it isn't working.
+    Sentry.replayIntegration(),
+  ],
+
+  // Buffers roughly the last minute in memory and only uploads it when something
+  // actually breaks, which is cheap enough to leave at 1.0 — these are the replays
+  // anyone actually watches.
+  replaysOnErrorSampleRate: 1.0,
+
+  // A sample of sessions where nothing goes wrong. Kept low: this is closer to product
+  // analytics than debugging, and every recorded session is data leaving the building.
+  replaysSessionSampleRate: 0.1,
 });
 
 // SvelteKit catches errors thrown in load functions and during component rendering and routes
