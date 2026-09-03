@@ -1,4 +1,8 @@
 FROM node:26-alpine AS web-build
+# The plugin reads this from the environment. It cannot work a release out for itself
+# here: auto-detection reads git HEAD, and .git is not in the build context. Left empty
+# for local builds, where the plugin falls back to auto-detection and finds one.
+ARG SENTRY_RELEASE=
 WORKDIR /src/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
@@ -14,8 +18,11 @@ RUN --mount=type=secret,id=sentry_auth_token \
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
-# Supplied by CI, which has the git history that MinVer needs and this build does not.
-# Left empty for local builds, where MinVer falls back to its own default.
+# Both supplied by CI, which has the git history this build does not. MinVer needs the
+# version; SourceRevisionId is what puts the commit into InformationalVersion, and hence
+# into the Sentry release name — normally SourceLink's job, but it needs git too.
+ARG VERSION=
+ARG COMMIT_SHA=
 WORKDIR /src
 COPY ["Truman.Api/Truman.Api.csproj", "Truman.Api/"]
 COPY ["Truman.Data/Truman.Data.csproj", "Truman.Data/"]
@@ -29,8 +36,12 @@ COPY . .
 # warning, so it must not be invoked at all. Fork PRs take that path.
 RUN --mount=type=secret,id=sentry_auth_token \
     export SENTRY_AUTH_TOKEN=$(cat /run/secrets/sentry_auth_token 2>/dev/null); \
+    if [ -n "$VERSION" ]; then \
+      export MinVerVersionOverride="$VERSION"; \
+    fi; \
     dotnet publish "Truman.Api/Truman.Api.csproj" \
-      -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+      -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false \
+      ${COMMIT_SHA:+/p:SourceRevisionId=$COMMIT_SHA}
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
