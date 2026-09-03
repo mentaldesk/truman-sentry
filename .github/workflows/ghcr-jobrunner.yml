@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
+        with:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -45,3 +45,8 @@ jobs:
           push: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Read inside the Dockerfile via --mount=type=secret, so it never lands in a
+          # layer or in the image history. Empty on fork PRs, where GitHub withholds
+          # secrets; the Sentry upload is skipped and the build still succeeds.
+          secrets: |
+            sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
