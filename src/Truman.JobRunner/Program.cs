@@ -31,6 +31,14 @@ try
             logging.AddSentry(options =>
             {
                 options.Dsn = context.Configuration["Sentry:Dsn"];
+                // The job runner's only diagnostics were console output, which goes to a
+                // container log nobody reads and disappears with the container. Structured
+                // logs put the same lines in Sentry, attached to the run that produced them
+                // and queryable by their parameters rather than by substring.
+                // Console apps reach Sentry.Extensions.Logging directly rather than through
+                // Sentry.AspNetCore, but it is the same integration underneath.
+                // Slated for removal — see getsentry/sentry-dotnet#5479.
+                options.EnableLogs = true;
                 // Sentry.AspNetCore bridges IWebHostEnvironment to the Sentry environment for us.
                 // Sentry.Extensions.Logging has no equivalent, so a generic-host app resolves it
                 // itself. Mirror the precedence Sentry.AspNetCore applies, so the API and the
