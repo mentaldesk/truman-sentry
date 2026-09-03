@@ -17,6 +17,15 @@
     <SentryUploadSources>true</SentryUploadSources>
   </PropertyGroup>
 
+  <!-- Derives the version from git tags, so releases read
+       Truman.Api@0.4.1-alpha.0.3+<sha> rather than a wall of 1.0.0+<sha>. MinVer needs
+       git history, which the container build does not have (.git is outside the ./src
+       build context and in .dockerignore), so CI passes the version it computed in
+       through MinVerVersionOverride instead. See the Dockerfiles. -->
+  <ItemGroup>
+    <PackageReference Include="MinVer" PrivateAssets="All" />
+  </ItemGroup>
+
   <!-- Keep sentry-cli out of the inner loop: no uploads on a local Debug build. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <UseSentryCLI>false</UseSentryCLI>

@@ -20,6 +20,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          # MinVer derives the version from tags, and set-commits works out the commit
+          # range since the last release. Both need real history, not a shallow clone.
+          fetch-depth: 0
+
+      # Computed here rather than in the container build, which has no .git: the build
+      # context is ./src and .git is both outside it and in .dockerignore.
+      - name: Compute version
+        id: version
+        run: |
+          dotnet tool install --global minver-cli --version 6.0.0
+          V=$(minver -t v)
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          # The SPA gets the commit appended here because, unlike the .NET SDK,
+          # nothing does it for us.
+          R="truman-web@$V+$GITHUB_SHA"
+          echo "release=$R" >> "$GITHUB_OUTPUT"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -48,5 +65,9 @@ jobs:
           # Read inside the Dockerfile via --mount=type=secret, so it never lands in a
           # layer or in the image history. Empty on fork PRs, where GitHub withholds
           # secrets; the Sentry upload is skipped and the build still succeeds.
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+            COMMIT_SHA=${{ github.sha }}
+            SENTRY_RELEASE=${{ steps.version.outputs.release }}
           secrets: |
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
