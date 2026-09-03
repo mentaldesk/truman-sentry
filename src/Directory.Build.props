@@ -1,4 +1,41 @@
 <Project>
   <PropertyGroup>
+    <!-- Where sentry-cli uploads to. The project is shared by the API, the job runner
+         and the SPA: separate Sentry projects per component would mean uploading the
+         same symbols repeatedly and resolving the same issue in several places. -->
+    <SentryOrg>mental-desk-ltd</SentryOrg>
+    <SentryProject>truman</SentryProject>
+
+    <!-- Uploads the portable PDBs, so stack frames carry real method names, file names
+         and line numbers instead of IL offsets. -->
+    <SentryUploadSymbols>true</SentryUploadSymbols>
+
+    <!-- Uploads the source files themselves, so an issue shows the lines of code around
+         the throw rather than just a file and line number to go and look up. Note that
+         this puts our source in Sentry — fine for a public repo, a decision worth making
+         deliberately for a closed one. -->
+    <SentryUploadSources>true</SentryUploadSources>
+  </PropertyGroup>
+
+  <!-- Derives the version from git tags, so releases read
+       Truman.Api@0.4.1-alpha.0.3+<sha> rather than a wall of 1.0.0+<sha>. MinVer needs
+       git history, which the container build does not have (.git is outside the ./src
+       build context and in .dockerignore), so CI passes the version it computed in
+       through MinVerVersionOverride instead. See the Dockerfiles. -->
+  <ItemGroup>
+    <PackageReference Include="MinVer" PrivateAssets="All" />
+  </ItemGroup>
+
+  <!-- Keep sentry-cli out of the inner loop: no uploads on a local Debug build. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <UseSentryCLI>false</UseSentryCLI>
+  </PropertyGroup>
+
+  <!-- And never invoke it without a token. sentry-cli treats a missing token as an
+       error, not a warning, so leaving this out fails the build outright. That matters
+       because build.yml deliberately runs a Release build with no secrets so it is safe
+       against fork PRs, and forks get no secrets at all. -->
+  <PropertyGroup Condition="'$(SENTRY_AUTH_TOKEN)' == ''">
+    <UseSentryCLI>false</UseSentryCLI>
   </PropertyGroup>
 </Project>
