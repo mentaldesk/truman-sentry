@@ -65,3 +65,18 @@ jobs:
             COMMIT_SHA=${{ github.sha }}
           secrets: |
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
+
+      # Associates the commits since the previous release with this one, which is what
+      # powers suspect commits on an issue. Deliberately NOT done via
+      # SentrySetCommitOptions=--local in the MSBuild integration: that reads local git
+      # history, and there is none inside the container build. Here the checkout is
+      # intact. Skipped on fork PRs, where SENTRY_AUTH_TOKEN is empty by design.
+      - name: Associate commits with the release
+        if: env.SENTRY_AUTH_TOKEN != ''
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: mental-desk-ltd
+          SENTRY_PROJECT: truman
+          RELEASE: Truman.JobRunner@${{ steps.version.outputs.version }}
+        run: |
+          npx @sentry/cli releases set-commits "$RELEASE" --auto --ignore-missing
