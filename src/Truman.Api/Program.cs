@@ -38,6 +38,14 @@ builder.WebHost.UseSentry(options =>
     options.CaptureFailedRequests = true;
     options.SendDefaultPii = true;
     options.StackTraceMode = StackTraceMode.Enhanced;
+    // Sends ILogger output to Sentry as structured logs, linked to the trace they
+    // happened inside. Distinct from breadcrumbs (kept in memory, attached to the next
+    // event, discarded if nothing fails) and from events (Error and above become issues).
+    // Sentry.AspNetCore builds on Sentry.Extensions.Logging and registers the structured
+    // logger provider as part of UseSentry, so no extra package is needed here.
+    // The option is slated for removal — adding the integration will be enablement in
+    // itself. See getsentry/sentry-dotnet#5479.
+    options.EnableLogs = true;
 });
 builder.Services.AddSentryTunneling();
 

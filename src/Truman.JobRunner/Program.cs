@@ -42,6 +42,12 @@ try
             options.CaptureFailedRequests = true;
             options.SendDefaultPii = true;
             options.StackTraceMode = StackTraceMode.Enhanced;
+            // The job runner's only diagnostics were console output, which goes to a container
+            // log nobody reads and disappears with the container. Structured logs put the same
+            // lines in Sentry, attached to the run that produced them and queryable by their
+            // parameters rather than by substring.
+            // Slated for removal — see getsentry/sentry-dotnet#5479.
+            options.EnableLogs = true;
         })
         .ConfigureServices((context, services) =>
         {
