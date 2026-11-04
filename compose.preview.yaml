@@ -24,6 +24,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       AI__ApiKey: ${AI__ApiKey}
       AI__Model: ${AI__Model}
+      Sentry__Dsn: ${Sentry__Dsn:-}
+      DOTNET_ENVIRONMENT: ${DOTNET_ENVIRONMENT:-Staging}
     command: ["--run-migrations"]
     restart: no
 
@@ -39,6 +41,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       AI__ApiKey: ${AI__ApiKey}
       AI__Model: ${AI__Model}
+      Sentry__Dsn: ${Sentry__Dsn:-}
+      DOTNET_ENVIRONMENT: ${DOTNET_ENVIRONMENT:-Staging}
     command: ["--fetch", "--analyse", "--limit", "10"]
     restart: no
 
@@ -57,10 +61,12 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-truman}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PORT: 5001
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Staging}
       Authentication__Social__Enabled: "false"
       Authentication__Jwt__Key: ${Authentication__Jwt__Key}
       Authentication__Jwt__Issuer: ${Authentication__Jwt__Issuer:-truman-api}
       Authentication__Jwt__Audience: ${Authentication__Jwt__Audience:-truman-web}
       Email__Brevo__ApiKey: ${Email__Brevo__ApiKey}
       Email__Brevo__MagicLinkTemplateId: ${Email__Brevo__MagicLinkTemplateId:-1}
+      Sentry__Dsn: ${Sentry__Dsn:-}
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}

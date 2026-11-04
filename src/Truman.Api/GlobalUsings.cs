@@ -9,3 +9,5 @@ global using System.Security.Claims;
 global using System.Text;
 global using Microsoft.Extensions.Options;
 global using Truman.Api.Features.Auth; 
+global using Sentry;
+global using Sentry.AspNetCore;

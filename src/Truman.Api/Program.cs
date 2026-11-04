@@ -22,6 +22,25 @@ builder.Configuration.AddDotNetEnv(".env", LoadOptions.TraversePath());
 var connectionString = builder.Configuration.GetPostgresConnectionString();
 builder.Services.AddDbContext<TrumanDbContext>(options => options.UseNpgsql(connectionString));
 
+// A sample rate of 1.0 records every trace. That is what you want while you are looking for
+// one, and not what you want once you are paying to store them, so it is a development
+// default rather than a universal one. Override per deployment with Sentry:TracesSampleRate.
+// The browser is handed this same value via /config.js so the two ends of a distributed
+// trace cannot drift apart.
+var tracesSampleRate = builder.Configuration.GetValue<double?>("Sentry:TracesSampleRate")
+                       ?? (builder.Environment.IsDevelopment() ? 1.0 : 0.2);
+
+builder.WebHost.UseSentry(options =>
+{
+    options.Dsn = builder.Configuration["Sentry:Dsn"];
+    options.TracesSampleRate = tracesSampleRate;
+    options.CaptureBlockingCalls = true;
+    options.CaptureFailedRequests = true;
+    options.SendDefaultPii = true;
+    options.StackTraceMode = StackTraceMode.Enhanced;
+});
+builder.Services.AddSentryTunneling();
+
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
@@ -100,13 +119,25 @@ if (hasWebBuild)
         FileProvider = webBuildFileProvider
     });
 
-    app.MapGet("/config.js", (HttpContext context, IConfiguration configuration) =>
+    app.MapGet("/config.js", (
+        HttpContext context,
+        IConfiguration configuration,
+        IOptions<SentryAspNetCoreOptions> sentryOptions) =>
     {
         var apiUrl = context.Request.GetBaseUrl();
+        var sentryDsn = configuration["Sentry:Dsn"] ?? string.Empty;
+        // Hand the browser the environment the Sentry SDK actually resolved, not the raw
+        // ASP.NET Core name. The two differ in casing ("Staging" vs "staging"), and Sentry
+        // treats those as separate environments — which would split browser events away from
+        // the API events they belong with.
+        var environment = sentryOptions.Value.Environment ?? app.Environment.EnvironmentName;
         var socialEnabled = configuration.GetValue("Authentication:Social:Enabled", defaultValue: true);
 
         var js = string.Join("\n",
             "window.__API_URL__ = " + JsonSerializer.Serialize(apiUrl) + ";",
+            "window.__ENVIRONMENT__ = " + JsonSerializer.Serialize(environment) + ";",
+            "window.__SENTRY_DSN__ = " + JsonSerializer.Serialize(sentryDsn) + ";",
+            "window.__SENTRY_TRACES_SAMPLE_RATE__ = " + JsonSerializer.Serialize(tracesSampleRate) + ";",
             "window.__SOCIAL_AUTH_ENABLED__ = " + JsonSerializer.Serialize(socialEnabled) + ";");
 
         return Results.Text(js, "application/javascript");
@@ -120,9 +151,13 @@ app.MapProfileEndpoints();
 app.MapTagPreferenceEndpoints();
 app.MapFeedEndpoints();
 app.MapPresenterEndpoints();
+app.UseSentryTunneling();
 
 if (hasWebBuild)
 {
+    // The Sentry tunnel is not listed here. UseSentryTunneling() branches the pipeline at
+    // /tunnel with terminal middleware, so those requests are handled and completed before
+    // the endpoint fallback is ever reached.
     app.MapFallback(async context =>
     {
         if (context.Request.Path.StartsWithSegments("/api") ||
