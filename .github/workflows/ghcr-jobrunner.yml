@@ -19,6 +19,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # MinVer derives the version from tags, and set-commits works out the commit
+          # range since the last release. Both need real history, not a shallow clone.
+          fetch-depth: 0
+
+      # Computed here rather than in the container build, which has no .git: the build
+      # context is ./src and .git is both outside it and in .dockerignore.
+      - name: Compute version
+        id: version
+        run: |
+          dotnet tool install --global minver-cli --version 6.0.0
+          echo "version=$(minver -t v)" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -45,3 +57,26 @@ jobs:
           push: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Read inside the Dockerfile via --mount=type=secret, so it never lands in a
+          # layer or in the image history. Empty on fork PRs, where GitHub withholds
+          # secrets; the Sentry upload is skipped and the build still succeeds.
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+            COMMIT_SHA=${{ github.sha }}
+          secrets: |
+            sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
+
+      # Associates the commits since the previous release with this one, which is what
+      # powers suspect commits on an issue. Deliberately NOT done via
+      # SentrySetCommitOptions=--local in the MSBuild integration: that reads local git
+      # history, and there is none inside the container build. Here the checkout is
+      # intact. Skipped on fork PRs, where SENTRY_AUTH_TOKEN is empty by design.
+      - name: Associate commits with the release
+        if: env.SENTRY_AUTH_TOKEN != ''
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: mental-desk-ltd
+          SENTRY_PROJECT: truman
+          RELEASE: Truman.JobRunner@${{ steps.version.outputs.version }}
+        run: |
+          npx @sentry/cli releases set-commits "$RELEASE" --auto --ignore-missing
