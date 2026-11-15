@@ -8,6 +8,7 @@ using Microsoft.SemanticKernel;
 using Polly;
 using Truman.Data;
 using Truman.JobRunner;
+using Sentry;
 using DotNetEnv;
 using DotNetEnv.Configuration;
 
@@ -24,11 +25,23 @@ try
             // Add dotnet-env configuration source to load from .env file
             config.AddDotNetEnv(".env", LoadOptions.TraversePath());
         })
-        .ConfigureLogging((context, logging) =>
+        .ConfigureLogging(logging =>
         {
             logging.ClearProviders();
             logging.AddConsole();
             logging.SetMinimumLevel(LogLevel.Information);
+        })
+        // Must come after ConfigureLogging: a ClearProviders() that runs later would remove the
+        // logger providers UseSentry added. https://github.com/getsentry/sentry-dotnet/issues/5755
+        .UseSentry(options =>
+        {
+            // Deliberately 1.0, unlike the API. This is a scheduled batch job with bounded
+            // volume — a handful of runs a day, not a request per user — so full sampling
+            // costs almost nothing and a sampled-out run is one we cannot investigate.
+            options.TracesSampleRate = 1.0;
+            options.CaptureFailedRequests = true;
+            options.SendDefaultPii = true;
+            options.StackTraceMode = StackTraceMode.Enhanced;
         })
         .ConfigureServices((context, services) =>
         {
@@ -134,7 +147,7 @@ try
 }
 catch (Exception e)
 {
-    Console.Error.WriteLine(e);
+    SentrySdk.CaptureException(e);
     // This is required to force an error code to be returned to k8s if an exception occurs... Otherwise, the CronJob
     // in k8s doesn't know the job has failed.
     Environment.Exit(1);
